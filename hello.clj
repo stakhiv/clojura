@@ -12,3 +12,15 @@
 (println "even sum" (reduce + 0 (filter even? x)))
 (println "total sum" (reduce + 0 x))
 (println "map x2" (map (fn (x) (+ x x)) x))
+
+(def blrd (fn (g)
+  ;; (let score 0)
+  (fn (n)
+    ;; (set! score (inc score))
+    (if (< n g)
+      (println "More!")
+      (if (> n g)
+        (println "Less!")
+        (println "You guessed it!!!"))))))
+
+(def guess (blrd (random 100)))

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 )
 
@@ -46,6 +47,20 @@ func (c *Context) Set(key Literal, s Sexpr) {
 	c.vars[key] = s
 }
 
+func (c *Context) SetExclm(key Literal, s Sexpr) {
+	for c != nil {
+		_, ok := c.vars[key]
+		if ok {
+			break
+		}
+		c = c.parent
+	}
+
+	if c != nil {
+		c.vars[key] = s
+	}
+}
+
 type Function interface {
 	Call([]Sexpr) Sexpr
 }
@@ -57,11 +72,11 @@ type Macros interface {
 type function struct {
 	name    string
 	args    []Literal
-	body    Sexpr
+	body    []Sexpr
 	context *Context
 }
 
-func NewFunction(name string, args []Literal, body Sexpr, c *Context) *function {
+func NewFunction(name string, args []Literal, body []Sexpr, c *Context) *function {
 	return &function{
 		name:    name,
 		args:    args,
@@ -83,7 +98,9 @@ func (f function) Call(args []Sexpr) Sexpr {
 			context.Set(f.args[i], arg)
 		}
 
-		res = f.body.Eval(context)
+		for _, ex := range f.body {
+			res = ex.Eval(context)
+		}
 		if res != nil && res.Type() == TypeRecur {
 			args = res.(*Recur).Args
 			continue
@@ -167,15 +184,20 @@ func (m macros) Create(c *Context, args []Sexpr) Sexpr {
 var coreContext *Context
 
 func init() {
+	rand.Seed(time.Now().UnixNano())
+
 	coreContext = NewContext(nil)
 	coreContext.Set("true", True)
 	coreContext.Set("false", False)
 	coreContext.Set("+", coreF(coreAdd))
 	coreContext.Set("-", coreF(coreSub))
 	coreContext.Set("def", macros(coreDef))
+	coreContext.Set("let", macros(coreLet))
+	// coreContext.Set("set!", macros(coreSetExclm))
 	coreContext.Set("println", coreF(corePrintln))
 	coreContext.Set("fn", macros(coreFn))
 	coreContext.Set("not", coreF(coreNot))
+	coreContext.Set("=", coreF(coreEq))
 	coreContext.Set("eq", coreF(coreEq))
 	coreContext.Set("if", macros(ifMacro))
 	coreContext.Set("head", coreF(coreHead))
@@ -188,6 +210,13 @@ func init() {
 	coreContext.Set("range", coreF(coreRange))
 	coreContext.Set("odd?", coreF(coreOdd))
 	coreContext.Set("load", coreF(coreLoad))
+	coreContext.Set(">", coreF(coreGreat))
+	coreContext.Set("<", coreF(coreLess))
+	coreContext.Set("<=", coreF(coreLessEq))
+	coreContext.Set(">=", coreF(coreGreatEq))
+	coreContext.Set("and", macros(coreAnd))
+	coreContext.Set("or", macros(coreOr))
+	coreContext.Set("random", coreF(coreRandom))
 }
 
 func coreAdd(args []Sexpr) Sexpr {
@@ -227,6 +256,32 @@ func coreDef(c *Context, args []Sexpr) Sexpr {
 		if ok {
 			res = args[1].Eval(c)
 			coreContext.Set(n, res)
+		}
+	}
+	return res
+}
+
+func coreLet(c *Context, args []Sexpr) Sexpr {
+	args = args[1:]
+	var res Sexpr
+	if len(args) > 1 {
+		n, ok := args[0].(Literal)
+		if ok {
+			res = args[1].Eval(c)
+			c.Set(n, res)
+		}
+	}
+	return res
+}
+
+func coreSetExclm(c *Context, args []Sexpr) Sexpr {
+	args = args[1:]
+	var res Sexpr
+	if len(args) > 1 {
+		n, ok := args[0].(Literal)
+		if ok {
+			res = args[1].Eval(c)
+			c.SetExclm(n, res)
 		}
 	}
 	return res
@@ -303,7 +358,7 @@ func coreFn(c *Context, args []Sexpr) Sexpr {
 	}
 
 	name := args[0].String()
-	argp, body := args[1], args[2]
+	argp, body := args[1], args[2:]
 	args = argp.(*Expression).Elements
 	largs := make([]Literal, len(args))
 
@@ -500,6 +555,164 @@ func coreLoad(args []Sexpr) Sexpr {
 	err := LoadFile(string(n))
 	if err != nil {
 		log.Errorf("Failed to load file '%s': %v\n", n, err)
+	}
+	return nil
+}
+
+func coreGreat(args []Sexpr) Sexpr {
+	if len(args) < 1 {
+		return False
+	}
+
+	a1 := args[0]
+	switch t := a1.(type) {
+	case Number:
+		for _, el := range args[1:] {
+			v, ok := el.(Number)
+			if !ok {
+				return False
+			}
+			if t <= v {
+				return False
+			}
+		}
+		return True
+	}
+	return False
+}
+func coreLess(args []Sexpr) Sexpr {
+	if len(args) < 1 {
+		return False
+	}
+
+	a1 := args[0]
+	switch t := a1.(type) {
+	case Number:
+		for _, el := range args[1:] {
+			v, ok := el.(Number)
+			if !ok {
+				return False
+			}
+			if t >= v {
+				return False
+			}
+		}
+		return True
+	}
+	return False
+}
+func coreLessEq(args []Sexpr) Sexpr {
+	if len(args) < 1 {
+		return False
+	}
+
+	a1 := args[0]
+	switch t := a1.(type) {
+	case Number:
+		for _, el := range args[1:] {
+			v, ok := el.(Number)
+			if !ok {
+				return False
+			}
+			if t > v {
+				return False
+			}
+		}
+		return True
+	}
+	return False
+}
+
+func coreGreatEq(args []Sexpr) Sexpr {
+	if len(args) < 1 {
+		return False
+	}
+
+	a1 := args[0]
+	switch t := a1.(type) {
+	case Number:
+		for _, el := range args[1:] {
+			v, ok := el.(Number)
+			if !ok {
+				return False
+			}
+			if t < v {
+				return False
+			}
+		}
+		return True
+	}
+	return False
+}
+
+func coreAnd(c *Context, args []Sexpr) Sexpr {
+	if len(args) < 2 {
+		return False
+	}
+
+	var res Sexpr
+	for _, el := range args[1:] {
+		res = el.Eval(c)
+		if !res.Bool() {
+			break
+		}
+	}
+	return res
+}
+
+func coreOr(c *Context, args []Sexpr) Sexpr {
+	if len(args) < 2 {
+		return False
+	}
+
+	var res Sexpr
+	for _, el := range args[1:] {
+		res = el.Eval(c)
+		if res.Bool() {
+			break
+		}
+	}
+	return res
+}
+
+func coreRandom(args []Sexpr) Sexpr {
+	if len(args) > 2 {
+		fmt.Println("random accepts 0, 1 or 2 arguments")
+		return nil
+	}
+	if len(args) == 0 {
+		return Number(rand.Int())
+	}
+
+	if len(args) == 1 {
+		n, ok := args[0].(Number)
+		if !ok {
+			fmt.Println("random argument should be number")
+			return nil
+		}
+
+		return Number(rand.Intn(int(n)))
+	}
+
+	if len(args) == 2 {
+		n1, ok := args[0].(Number)
+		if !ok {
+			fmt.Println("random arguments should be number")
+			return nil
+		}
+
+		n2, ok := args[1].(Number)
+		if !ok {
+			fmt.Println("random arguments should be number")
+			return nil
+		}
+
+		if n1 > n2 {
+			n2, n1 = n1, n2
+		}
+
+		r := rand.Intn(int(n2 - n1))
+		return Number(r) + n1
 	}
 	return nil
 }
