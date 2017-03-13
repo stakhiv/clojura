@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	True  = &Boolean{true}
-	False = &Boolean{false}
+	True  = Boolean(true)
+	False = Boolean(false)
 )
 
 type Context struct {
@@ -186,6 +186,7 @@ func init() {
 	coreContext.Set("cons", coreF(coreCons))
 	coreContext.Set("recur", coreF(coreRecur))
 	coreContext.Set("range", coreF(coreRange))
+	coreContext.Set("odd?", coreF(coreOdd))
 }
 
 func coreAdd(args []Sexpr) Sexpr {
@@ -463,9 +464,23 @@ func coreRange(args []Sexpr) Sexpr {
 
 	res := NewList()
 	var i Number
-	for i = n; i > 0; i-- {
+	for i = n - 1; i >= 0; i-- {
 		res.addFast(i)
 	}
 
 	return res
+}
+
+func coreOdd(args []Sexpr) Sexpr {
+	if len(args) != 1 {
+		log.Error("bad num of args for range")
+		return nil
+	}
+	n, ok := args[0].(Number)
+	if !ok {
+		log.Error("range first arg shold be number, got", args[0].Type())
+		return nil
+	}
+
+	return Boolean((n % 2) != 0)
 }

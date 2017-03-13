@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"flag"
+	"io"
 	slog "log"
 	"os"
 	"time"
@@ -14,7 +16,7 @@ func main() {
 	if len(flag.Args()) < 1 {
 		slog.Fatalln("Missing file arg")
 	}
-	err := LoadFile("core.clj")
+	err := Exec(bytes.NewReader([]byte(initData)))
 	if err != nil {
 		slog.Fatalln("Failed to load 'core.cj'", err)
 	}
@@ -27,21 +29,23 @@ func main() {
 }
 
 func LoadFile(name string) error {
-	start := time.Now()
 	f, err := os.Open(name)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	sexpr := make([]Sexpr, 0)
+	return Exec(f)
+}
 
-	lexer := NewLexer(f)
+func Exec(r io.Reader) error {
+	lexer := NewLexer(r)
 	parser := NewParser(lexer)
-	sexpr, err = parser.Parse()
+	start := time.Now()
+	sexpr, err := parser.Parse()
 	if err != nil {
 		return err
 	}
-	log.Debugf("Parsed '%s' in ", name, time.Since(start))
+	log.Debug("Parsed in ", time.Since(start))
 	// Evaluate
 	for _, s := range sexpr {
 		s.Eval(coreContext)

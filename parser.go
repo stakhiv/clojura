@@ -158,30 +158,28 @@ func (n Number) Eval(c *Context) Sexpr {
 	return n
 }
 
-type Boolean struct {
-	Val bool
+type Boolean bool
+
+func (b Boolean) Bool() bool {
+	return bool(b)
 }
 
-func (b *Boolean) Bool() bool {
-	return b.Val
-}
-
-func (b *Boolean) String() string {
-	if b.Val {
+func (b Boolean) String() string {
+	if b {
 		return "true"
 	}
 	return "false"
 }
 
-func (b *Boolean) Type() CoreType {
+func (b Boolean) Type() CoreType {
 	return TypeBoolean
 }
 
-func (b *Boolean) Append(s Sexpr) error {
+func (b Boolean) Append(s Sexpr) error {
 	return errors.New("cannot append")
 }
 
-func (b *Boolean) Eval(c *Context) Sexpr {
+func (b Boolean) Eval(c *Context) Sexpr {
 	return b
 }
 
