@@ -13,12 +13,13 @@ var log = NewLogger(Info)
 
 func main() {
 	flag.Parse()
-	if len(flag.Args()) < 1 {
-		slog.Fatalln("Missing file arg")
-	}
 	err := Exec(bytes.NewReader([]byte(initData)))
 	if err != nil {
 		slog.Fatalln("Failed to load 'core.cj'", err)
+	}
+	if len(flag.Args()) < 1 {
+		StartRepl()
+		return
 	}
 
 	fname := flag.Args()[0]

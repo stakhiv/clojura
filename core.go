@@ -187,6 +187,7 @@ func init() {
 	coreContext.Set("recur", coreF(coreRecur))
 	coreContext.Set("range", coreF(coreRange))
 	coreContext.Set("odd?", coreF(coreOdd))
+	coreContext.Set("load", coreF(coreLoad))
 }
 
 func coreAdd(args []Sexpr) Sexpr {
@@ -292,7 +293,7 @@ func corePrintln(args []Sexpr) Sexpr {
 			res += arg.String() + " "
 		}
 	}
-	fmt.Println("->", res)
+	fmt.Println(res)
 	return nil
 }
 
@@ -473,14 +474,32 @@ func coreRange(args []Sexpr) Sexpr {
 
 func coreOdd(args []Sexpr) Sexpr {
 	if len(args) != 1 {
-		log.Error("bad num of args for range")
+		log.Error("bad num of args for odd?")
 		return nil
 	}
 	n, ok := args[0].(Number)
 	if !ok {
-		log.Error("range first arg shold be number, got", args[0].Type())
+		log.Error("odd? first arg shold be number, got", args[0].Type())
 		return nil
 	}
 
 	return Boolean((n % 2) != 0)
+}
+
+func coreLoad(args []Sexpr) Sexpr {
+	if len(args) != 1 {
+		log.Error("bad num of args for load")
+		return nil
+	}
+	n, ok := args[0].(Literal)
+	if !ok {
+		log.Error("load first arg shold be literal, got", args[0].Type())
+		return nil
+	}
+
+	err := LoadFile(string(n))
+	if err != nil {
+		log.Errorf("Failed to load file '%s': %v\n", n, err)
+	}
+	return nil
 }
