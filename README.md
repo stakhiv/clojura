@@ -7,5 +7,7 @@ Very simple clojure-like LISP interpreter.
 
 or
 
-`clojura`
-`>(load hello.clj)`
+```
+$clojura
+>(load hello.clj)
+```
